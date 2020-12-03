@@ -2,6 +2,6 @@
 Service to echo the client public ip address
 
 ### Usage
-To use just make a http request to http://echo-ip.com
+To use just make a http request to https://echo-ip.com
 
-Example: curl http://echo-ip.com
+Example: curl https://echo-ip.com
