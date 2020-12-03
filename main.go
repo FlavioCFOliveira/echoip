@@ -28,15 +28,19 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func ReadUserIP(r *http.Request) string {
+
 	IPAddress := r.Header.Get("X-Real-Ip")
-	if IPAddress == "" {
+
+	if len(IPAddress) == 0 {
+
 		IPAddress = r.Header.Get("X-Forwarded-For")
-	}
-	if IPAddress == "" {
-		IPAddress = r.RemoteAddr
+
+		if len(IPAddress) == 0 {
+			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+			IPAddress = ip
+		}
+
 	}
 
-	ip, _, _ := net.SplitHostPort(IPAddress)
-
-	return ip
+	return IPAddress
 }
