@@ -3,6 +3,17 @@ name: CI Go
 on: push
 
 jobs:
+  check-dep-change:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+    - name: Check outdated dependencies
+      run: go mod tidy -diff
+
   format-check:
     runs-on: ubuntu-latest
     steps:
