@@ -9,7 +9,7 @@ import (
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 
-	w.Header().Set("Server", "Atanor 1.0")
+	w.Header().Set("Server", "Echo Server 1.0")
 	w.Header().Set("Content-Type", "text/plain")
 
 	IPAddress := r.Header.Get("X-Real-Ip")
@@ -29,8 +29,8 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	ua := r.Header.Get("User-Agent")
-	slog.Info("Request", "IP", IPAddress, "User-Agent", ua)
+	//ua := r.Header.Get("User-Agent")
+	//slog.Info("Request", "IP", IPAddress, "User-Agent", ua)
 
 	w.Write([]byte(IPAddress))
 }
