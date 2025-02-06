@@ -12,25 +12,27 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Server", "Echo Server 1.0")
 	w.Header().Set("Content-Type", "text/plain")
 
+	// checks if the request is coming from a proxy
 	IPAddress := r.Header.Get("X-Real-Ip")
-
-	if len(IPAddress) == 0 {
-		IPAddress = r.Header.Get("X-Forwarded-For")
-		if len(IPAddress) == 0 {
-			ip, _, err := net.SplitHostPort(r.RemoteAddr)
-
-			if err != nil {
-				slog.Error("Request", "Error", err.Error())
-				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-				return
-			}
-
-			IPAddress = ip
-		}
+	if len(IPAddress) > 0 {
+		w.Write([]byte(IPAddress))
+		return
 	}
 
-	//ua := r.Header.Get("User-Agent")
-	//slog.Info("Request", "IP", IPAddress, "User-Agent", ua)
+	// checks again if the request is coming from other proxiess
+	IPAddress = r.Header.Get("X-Forwarded-For")
+	if len(IPAddress) > 0 {
+		w.Write([]byte(IPAddress))
+		return
+	}
 
-	w.Write([]byte(IPAddress))
+	// gets the IP address of the client
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		slog.Error("Request", "Error", err.Error())
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte(ip))
 }
