@@ -29,5 +29,8 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ua := r.Header.Get("User-Agent")
+	slog.Info("Request", "IP", IPAddress, "User-Agent", ua)
+
 	w.Write([]byte(IPAddress))
 }
