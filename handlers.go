@@ -14,14 +14,14 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 
 	// checks if the request is coming from a proxy
 	ipAddress := r.Header.Get("X-Real-IP")
-	if len(ipAddress) > 0 {
+	if ipAddress != "" {
 		w.Write([]byte(ipAddress))
 		return
 	}
 
 	// checks again if the request is coming from other proxies
 	ipAddress = r.Header.Get("X-Forwarded-For")
-	if len(ipAddress) > 0 {
+	if ipAddress != "" {
 		w.Write([]byte(ipAddress))
 		return
 	}
