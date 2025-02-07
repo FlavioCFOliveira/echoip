@@ -13,26 +13,26 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 
 	// checks if the request is coming from a proxy
-	IPAddress := r.Header.Get("X-Real-Ip")
-	if len(IPAddress) > 0 {
-		w.Write([]byte(IPAddress))
+	ipAddress := r.Header.Get("X-Real-IP")
+	if len(ipAddress) > 0 {
+		w.Write([]byte(ipAddress))
 		return
 	}
 
-	// checks again if the request is coming from other proxiess
-	IPAddress = r.Header.Get("X-Forwarded-For")
-	if len(IPAddress) > 0 {
-		w.Write([]byte(IPAddress))
+	// checks again if the request is coming from other proxies
+	ipAddress = r.Header.Get("X-Forwarded-For")
+	if len(ipAddress) > 0 {
+		w.Write([]byte(ipAddress))
 		return
 	}
 
 	// gets the IP address of the client
-	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	ipAddress, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		slog.Error("Request", "Error", err.Error())
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	w.Write([]byte(ip))
+	w.Write([]byte(ipAddress))
 }
