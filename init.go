@@ -26,7 +26,7 @@ func init() {
 		portint, err := strconv.Atoi(portStr)
 
 		if err != nil {
-			slog.Error("Invalid PORT environment variable, using default port 8080", "Error", err.Error())
+			slog.Error("Invalid PORT environment variable", "Error", err.Error())
 			os.Exit(1)
 		}
 
