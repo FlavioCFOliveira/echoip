@@ -1,14 +1,14 @@
 package main
 
 import (
-	"flag"
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 )
 
-var host string
-var port int
+var HOST string
+var PORT int
 
 func init() {
 
@@ -16,10 +16,22 @@ func init() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	// initializing the flags
-	flag.StringVar(&host, "host", "0.0.0.0", "the hostname")
-	flag.IntVar(&port, "port", 8010, "the port")
-	flag.Parse()
+	HOST = os.Getenv("ECHOIP_HOST")
+	if HOST == "" {
+		HOST = "0.0.0.0"
+	}
+
+	PORT = 8080 // default port
+	if portStr := os.Getenv("ECHOIP_PORT"); portStr != "" {
+		portint, err := strconv.Atoi(portStr)
+
+		if err != nil {
+			slog.Error("Invalid PORT environment variable, using default port 8080", "Error", err.Error())
+			os.Exit(1)
+		}
+
+		PORT = portint
+	}
 
 	// initializing the routes
 	http.HandleFunc("/", homeHandler)

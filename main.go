@@ -7,10 +7,11 @@ import (
 )
 
 func main() {
-	slog.Info("Starting echo-ip service", "host", host, "port", port)
+	slog.Info("Starting echo-ip service", "host", HOST, "port", PORT)
 
-	err := http.ListenAndServe(fmt.Sprintf("%s:%v", host, port), nil)
+	err := http.ListenAndServe(fmt.Sprintf("%s:%v", HOST, PORT), nil)
 	if err != nil {
 		slog.Error("Error starting echo-ip service", "Error", err.Error())
 	}
+
 }
