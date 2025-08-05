@@ -10,7 +10,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.23'
+        go-version: '1.24.5'
     - name: Check outdated dependencies
       run: go mod tidy -diff
 
@@ -21,7 +21,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.23'
+         go-version: '1.24.5'
     - name: Check format according to gofmt
       run: test -z $(gofmt -l .)
   test:
@@ -31,7 +31,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
-        go-version: '1.23'
+         go-version: '1.24.5'
     - name: Test
       run: go test -v ./...
 

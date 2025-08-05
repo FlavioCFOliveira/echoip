@@ -1,3 +1,3 @@
 module github.com/FlavioCFOliveira/echoip
 
-go 1.23.6
+go 1.24.5
