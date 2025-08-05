@@ -16,8 +16,7 @@ func init() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	HOST = os.Getenv("ECHOIP_HOST")
-	if HOST == "" {
+	if HOST = os.Getenv("ECHOIP_HOST"); HOST == "" {
 		HOST = "0.0.0.0"
 	}
 
