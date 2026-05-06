@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Roadmap
+
+**Name:** echoip
+
 ## Project
 
 `echoip` is a small HTTP service that returns the requesting client's public IP address as `text/plain`. It is deployed at https://echo-ip.com. Go 1.26.2, standard library only — no third-party dependencies.
