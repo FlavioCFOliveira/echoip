@@ -3,6 +3,7 @@
 A high-performance, zero-dependency HTTP service that returns the requesting client's public IP address as plain text. Written in Go, deployed at **[echo-ip.com](https://echo-ip.com)**, and engineered for very high concurrency under sustained load.
 
 [![CI Go](https://github.com/FlavioCFOliveira/echoip/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/FlavioCFOliveira/echoip/actions/workflows/go.yml)
+[![codecov](https://codecov.io/gh/FlavioCFOliveira/echoip/branch/main/graph/badge.svg)](https://codecov.io/gh/FlavioCFOliveira/echoip)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/FlavioCFOliveira/echoip)](https://go.dev/)
 [![License: MIT](https://img.shields.io/github/license/FlavioCFOliveira/echoip)](LICENSE)
 
