@@ -1,47 +1,104 @@
 name: CI Go
 
-on: push
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
 
 jobs:
-  check-dep-change:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.24.5'
-
-    - name: Check outdated dependencies
-      run: go mod tidy -diff
-
   format-check:
+    name: gofmt
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-         go-version: '1.24.5'
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
 
-    - name: Check format according to gofmt
-      run: test -z $(gofmt -l .)
+      - name: Check format according to gofmt
+        run: |
+          out=$(gofmt -l .)
+          if [ -n "$out" ]; then
+            echo "Files not gofmt-clean:"
+            echo "$out"
+            exit 1
+          fi
+
+  check-dep-change:
+    name: go mod tidy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Check outdated dependencies
+        run: go mod tidy -diff
+
+  lint:
+    name: golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.1
+
+  vuln:
+    name: govulncheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: govulncheck
+        uses: golang/govulncheck-action@v1
+        with:
+          go-version-file: go.mod
 
   test:
+    name: go test
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v6
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-         go-version: '1.24.5'
-         
-    - name: Test
-      run: go test -v ./...
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
 
+      - name: Test
+        run: go test -race -shuffle=on -coverprofile=coverage.out -covermode=atomic -v ./...
+
+  build:
+    name: go build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Build
+        run: go build -trimpath -ldflags="-s -w" ./...

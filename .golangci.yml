@@ -1,0 +1,23 @@
+version: "2"
+
+linters:
+  default: standard
+  enable:
+    - bodyclose
+    - copyloopvar
+    - errorlint
+    - gocheckcompilerdirectives
+    - gosec
+    - intrange
+    - misspell
+    - nilerr
+    - noctx
+    - perfsprint
+    - prealloc
+    - unconvert
+    - unparam
+    - wastedassign
+  settings:
+    errcheck:
+      exclude-functions:
+        - (net/http.ResponseWriter).Write

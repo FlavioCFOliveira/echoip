@@ -4,14 +4,22 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 )
 
 func main() {
+	addr := fmt.Sprintf("%s:%v", HOST, PORT)
 	slog.Info("Starting echo-ip service", "host", HOST, "port", PORT)
 
-	err := http.ListenAndServe(fmt.Sprintf("%s:%v", HOST, PORT), nil)
-	if err != nil {
-		slog.Error("Error starting echo-ip service", "Error", err.Error())
+	server := &http.Server{
+		Addr:              addr,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 
+	if err := server.ListenAndServe(); err != nil {
+		slog.Error("Error starting echo-ip service", "Error", err.Error())
+	}
 }

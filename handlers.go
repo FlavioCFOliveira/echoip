@@ -1,38 +1,61 @@
 package main
 
 import (
+	"io"
+	"log/slog"
 	"net"
 	"net/http"
-
-	"log/slog"
+	"net/netip"
+	"strings"
 )
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Server", "Echo Server 1.0")
-	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
 
-	// checks if the request is coming from a proxy
-	ipAddress := r.Header.Get("X-Real-IP")
-	if ipAddress != "" {
-		w.Write([]byte(ipAddress))
-		return
-	}
-
-	// checks again if the request is coming from other proxies
-	ipAddress = r.Header.Get("X-Forwarded-For")
-	if ipAddress != "" {
-		w.Write([]byte(ipAddress))
-		return
-	}
-
-	// gets the IP address of the client
-	ipAddress, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		slog.Error("Request", "Error", err.Error())
+	addr := clientIP(r)
+	if !addr.IsValid() {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
-	w.Write([]byte(ipAddress))
+	// #nosec G705 -- addr was strictly validated via netip.ParseAddr;
+	// response is text/plain with X-Content-Type-Options: nosniff.
+	_, _ = io.WriteString(w, addr.String())
+}
+
+// clientIP resolves the client's IP address with this precedence:
+//  1. X-Real-IP header
+//  2. X-Forwarded-For header (leftmost entry of the proxy chain)
+//  3. TCP RemoteAddr
+//
+// Each candidate is validated through netip.ParseAddr; invalid candidates
+// fall through to the next source. Returns the zero netip.Addr when no
+// valid IP can be determined.
+func clientIP(r *http.Request) netip.Addr {
+	if h := r.Header.Get("X-Real-IP"); h != "" {
+		if a, err := netip.ParseAddr(strings.TrimSpace(h)); err == nil {
+			return a
+		}
+	}
+
+	if h := r.Header.Get("X-Forwarded-For"); h != "" {
+		first := h
+		if i := strings.IndexByte(h, ','); i >= 0 {
+			first = h[:i]
+		}
+		if a, err := netip.ParseAddr(strings.TrimSpace(first)); err == nil {
+			return a
+		}
+	}
+
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		slog.Error("Request", "Error", err.Error())
+		return netip.Addr{}
+	}
+	a, _ := netip.ParseAddr(host)
+	return a
 }
