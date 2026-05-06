@@ -92,7 +92,32 @@ func routes(rl *rateLimiter) *http.ServeMux {
 	mux.Handle("/readyz", wrap(http.HandlerFunc(readyzHandler)))
 	mux.Handle("/version", wrap(http.HandlerFunc(versionHandler)))
 	mux.HandleFunc("/metrics", metricsHandler)
+	// Stop crawler/browser noise from inflating 404s on /. These
+	// stay outside the access log via the path filter in access.go
+	// only if added there; here they are simply quick fixed responses.
+	mux.HandleFunc("/robots.txt", robotsHandler)
+	mux.HandleFunc("/favicon.ico", faviconHandler)
 	return mux
+}
+
+func robotsHandler(w http.ResponseWriter, r *http.Request) {
+	if !methodAllowed(w, r) {
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	if r.Method == http.MethodHead {
+		return
+	}
+	_, _ = w.Write([]byte("User-agent: *\nDisallow: /\n"))
+}
+
+func faviconHandler(w http.ResponseWriter, r *http.Request) {
+	if !methodAllowed(w, r) {
+		return
+	}
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // run serves until ctx is cancelled or the server fails. On

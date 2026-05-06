@@ -12,7 +12,7 @@ import (
 
 func TestRoutes_AllPathsRegistered(t *testing.T) {
 	mux := routes(nil)
-	for _, p := range []string{"/", "/healthz", "/livez", "/readyz", "/version", "/metrics"} {
+	for _, p := range []string{"/", "/healthz", "/livez", "/readyz", "/version", "/metrics", "/robots.txt", "/favicon.ico"} {
 		t.Run(p, func(t *testing.T) {
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, p, nil)
 			req.RemoteAddr = "127.0.0.1:1234"
