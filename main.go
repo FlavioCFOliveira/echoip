@@ -28,6 +28,10 @@ func main() {
 		slog.Error("Failed to bind listener", "Error", err.Error())
 		os.Exit(1)
 	}
+	if ProxyProtocol {
+		ln = &proxyProtoListener{Listener: ln}
+		slog.Info("PROXY protocol decoder enabled on listener")
+	}
 
 	server := &http.Server{
 		Handler:           routes(),

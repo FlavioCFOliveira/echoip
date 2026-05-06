@@ -11,8 +11,9 @@ import (
 
 var HOST string
 var PORT int
-var TLSCert string // ECHOIP_TLS_CERT — empty means plain HTTP
-var TLSKey string  // ECHOIP_TLS_KEY  — empty means plain HTTP
+var TLSCert string     // ECHOIP_TLS_CERT — empty means plain HTTP
+var TLSKey string      // ECHOIP_TLS_KEY  — empty means plain HTTP
+var ProxyProtocol bool // ECHOIP_PROXY_PROTOCOL=true wraps the listener
 
 func init() {
 
@@ -57,6 +58,8 @@ func init() {
 		slog.Error("ECHOIP_TLS_CERT and ECHOIP_TLS_KEY must be set together (or both empty)")
 		os.Exit(1)
 	}
+
+	ProxyProtocol = os.Getenv("ECHOIP_PROXY_PROTOCOL") == "true"
 }
 
 func validatePort(p int) error {
