@@ -440,6 +440,25 @@ func BenchmarkHomeHandler_E2E(b *testing.B) {
 	})
 }
 
+// TestClientIP_ZeroAlloc locks in the zero-allocation property of
+// every clientIP path. The fallthrough path used to allocate 96 B
+// and 2 allocs via net.SplitHostPort; the netip.ParseAddrPort
+// rewrite eliminated that. A regression here means a future change
+// reintroduced a heap allocation on the request hot path.
+func TestClientIP_ZeroAlloc(t *testing.T) {
+	for _, s := range benchScenarios {
+		t.Run(s.name, func(t *testing.T) {
+			req := newRequest(t.Context(), s)
+			allocs := testing.AllocsPerRun(100, func() {
+				_ = clientIP(req)
+			})
+			if allocs > 0 {
+				t.Errorf("clientIP %s = %.2f allocs/op, want 0", s.name, allocs)
+			}
+		})
+	}
+}
+
 // FuzzClientIP guards parseAddrPort + header parsing against panic
 // or out-of-bounds bugs on adversarial input. The headers and
 // remoteAddr come from the fuzz engine; clientIP must always
