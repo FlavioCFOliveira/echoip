@@ -16,15 +16,29 @@ import (
 // cannot be spoofed by arbitrary clients.
 var trustedProxies []netip.Prefix
 
+// Pre-allocated header value slices for the handler hot path. Direct
+// map writes against canonical keys bypass the per-call slice
+// allocation that http.Header.Set() (→ textproto.MIMEHeader.Set)
+// incurs — saving one heap allocation per header per request.
+var (
+	hdrPlainText  = []string{"text/plain; charset=utf-8"}
+	hdrNoSniff    = []string{"nosniff"}
+	hdrNoStore    = []string{"no-store"}
+	hdrCORSAny    = []string{"*"}
+	hdrAllowGH    = []string{"GET, HEAD"}
+	hdrCORSMaxAge = []string{"86400"}
+)
+
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 
+	h := w.Header()
 	// Public-payload CORS: any origin can fetch from JS without a
 	// custom proxy. No credentials are involved so wildcard is safe.
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	h["Access-Control-Allow-Origin"] = hdrCORSAny
 
 	if r.Method == http.MethodOptions {
-		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD")
-		w.Header().Set("Access-Control-Max-Age", "86400")
+		h["Access-Control-Allow-Methods"] = hdrAllowGH
+		h["Access-Control-Max-Age"] = hdrCORSMaxAge
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
@@ -33,9 +47,9 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	w.Header().Set("X-Content-Type-Options", "nosniff")
-	w.Header().Set("Cache-Control", "no-store")
+	h["Content-Type"] = hdrPlainText
+	h["X-Content-Type-Options"] = hdrNoSniff
+	h["Cache-Control"] = hdrNoStore
 
 	addr := clientIP(r)
 	if !addr.IsValid() {
