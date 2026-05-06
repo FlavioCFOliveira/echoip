@@ -164,6 +164,9 @@ func TestHomeHandler(t *testing.T) {
 			if cc := rr.Header().Get("Cache-Control"); cc != "no-store" {
 				t.Errorf("Cache-Control = %q, want no-store", cc)
 			}
+			if cors := rr.Header().Get("Access-Control-Allow-Origin"); cors != "*" {
+				t.Errorf("Access-Control-Allow-Origin = %q, want *", cors)
+			}
 		})
 	}
 }
@@ -273,6 +276,29 @@ func TestParseTrustedProxies(t *testing.T) {
 	}
 }
 
+func TestHomeHandler_OPTIONS_Preflight(t *testing.T) {
+	req := httptest.NewRequestWithContext(t.Context(), http.MethodOptions, "/", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	rr := httptest.NewRecorder()
+	homeHandler(rr, req)
+
+	if rr.Code != http.StatusNoContent {
+		t.Errorf("status = %d, want 204", rr.Code)
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Errorf("Access-Control-Allow-Origin = %q, want *", got)
+	}
+	if got := rr.Header().Get("Access-Control-Allow-Methods"); got != "GET, HEAD" {
+		t.Errorf("Access-Control-Allow-Methods = %q, want GET, HEAD", got)
+	}
+	if got := rr.Header().Get("Access-Control-Max-Age"); got == "" {
+		t.Error("Access-Control-Max-Age missing")
+	}
+	if rr.Body.Len() != 0 {
+		t.Errorf("body length = %d, want 0", rr.Body.Len())
+	}
+}
+
 func TestHomeHandler_HEAD(t *testing.T) {
 	s := scenario{
 		name:       "HEAD_XRealIP",
@@ -303,7 +329,6 @@ func TestHomeHandler_MethodNotAllowed(t *testing.T) {
 		http.MethodPut,
 		http.MethodPatch,
 		http.MethodDelete,
-		http.MethodOptions,
 		http.MethodConnect,
 		http.MethodTrace,
 	} {

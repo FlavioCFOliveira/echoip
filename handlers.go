@@ -18,6 +18,17 @@ var trustedProxies []netip.Prefix
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 
+	// Public-payload CORS: any origin can fetch from JS without a
+	// custom proxy. No credentials are involved so wildcard is safe.
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+
+	if r.Method == http.MethodOptions {
+		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD")
+		w.Header().Set("Access-Control-Max-Age", "86400")
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	if !methodAllowed(w, r) {
 		return
 	}
