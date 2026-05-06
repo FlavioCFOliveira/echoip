@@ -37,7 +37,7 @@ go build -trimpath -ldflags="-s -w" ./...                             # producti
 go test -race -shuffle=on -coverprofile=coverage.out -covermode=atomic ./...   # tests as CI runs them
 go test -bench=. -benchmem -count=10 ./...                            # benchmarks
 go test -fuzz=FuzzSomething -fuzztime=30s ./...                       # fuzzing (when fuzz tests exist)
-gofmt -l .                                                            # CI fails if this prints any filenames
+gofmt -s -l .                                                         # CI fails if this prints any filenames (-s applies simplifications)
 go mod tidy -diff                                                     # CI fails if this reports a diff
 golangci-lint run ./...                                               # meta-linter (config in .golangci.yml)
 govulncheck ./...                                                     # vulnerability scan against vuln.go.dev
@@ -80,7 +80,7 @@ The header-first precedence inside the trust gate still assumes the listed CIDRs
 
 `.github/workflows/go.yml` runs these independent jobs on every push and pull request — all must pass:
 
-- **format-check** — `gofmt -l .`
+- **format-check** — `gofmt -s -l .`
 - **check-dep-change** — `go mod tidy -diff`
 - **lint** — `golangci-lint` v2.12.1 with `.golangci.yml`; subsumes `go vet`, `staticcheck`, `errcheck`, `unused`, `ineffassign`, plus `gosec`, `bodyclose`, `errorlint`, `noctx`, `perfsprint`, `prealloc`, `unconvert`, `unparam`, `wastedassign`, `misspell`, `nilerr`, `gocheckcompilerdirectives`, `intrange`, `copyloopvar`.
 - **vuln** — `govulncheck-action@v1` against `vuln.go.dev` (stdlib + dependencies).

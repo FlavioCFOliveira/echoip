@@ -229,7 +229,7 @@ End-to-end load can also be measured with `wrk`, `hey`, or `vegeta`.
 ```bash
 go test -race -shuffle=on -coverprofile=coverage.out -covermode=atomic ./...   # full test suite (CI flags)
 go test -bench=. -benchmem -count=10 ./...                                     # benchmarks
-gofmt -l .                                                                     # formatter check
+gofmt -s -l .                                                                  # formatter + simplification check
 go mod tidy -diff                                                              # dependency drift check
 golangci-lint run ./...                                                        # full lint set
 govulncheck ./...                                                              # vulnerability scan against vuln.go.dev
@@ -283,7 +283,7 @@ The service:
 
 Contributions are welcome. Before submitting a PR:
 
-1. `gofmt -l .` must produce no output.
+1. `gofmt -s -l .` must produce no output.
 2. `golangci-lint run ./...` must pass.
 3. `go test -race -shuffle=on ./...` must pass.
 4. Performance-relevant changes must include benchmark numbers (baseline vs. change) in the PR description.

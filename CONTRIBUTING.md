@@ -7,7 +7,7 @@ Contributions are welcome — bug fixes, performance work, new features, and doc
 All of the following must be green locally:
 
 ```bash
-gofmt -l .                                                              # must print nothing
+gofmt -s -l .                                                           # must print nothing
 go mod tidy -diff                                                       # must report no diff
 golangci-lint run ./...                                                 # must report 0 issues
 govulncheck ./...                                                       # must find no vulnerabilities

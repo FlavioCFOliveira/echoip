@@ -22,10 +22,12 @@ jobs:
 
       - name: Check format according to gofmt
         run: |
-          out=$(gofmt -l .)
+          out=$(gofmt -s -l .)
           if [ -n "$out" ]; then
-            echo "Files not gofmt-clean:"
+            echo "Files not gofmt -s clean:"
             echo "$out"
+            echo
+            echo "Run 'gofmt -s -w .' locally to fix."
             exit 1
           fi
 
