@@ -89,6 +89,8 @@ For Kubernetes, load balancers, and uptime monitors. All return `text/plain` `ok
 | `GET /healthz` | Process is alive and accepting requests | Always 200 once the process is up. |
 | `GET /livez` | Liveness — restart if it fails | Same as healthz today; reserved for future internal-degradation checks. |
 | `GET /readyz` | Readiness — should receive traffic? | 200 once the HTTP server has bound; 503 during cold start or shutdown. |
+| `GET /version` | Build metadata | `version`, `commit`, `date`, `go` lines as `text/plain`. |
+| `GET /metrics` | Prometheus exposition | Counters (requests by class), gauge (in-flight), histogram (duration). |
 
 ### Configuration
 

@@ -83,11 +83,12 @@ func routes(rl *rateLimiter) *http.ServeMux {
 	if rl != nil {
 		home = rl.middleware(home)
 	}
-	mux.Handle("/", home)
-	mux.HandleFunc("/healthz", healthzHandler)
-	mux.HandleFunc("/livez", livezHandler)
-	mux.HandleFunc("/readyz", readyzHandler)
-	mux.HandleFunc("/version", versionHandler)
+	mux.Handle("/", defaultMetrics.middleware(home))
+	mux.Handle("/healthz", defaultMetrics.middleware(http.HandlerFunc(healthzHandler)))
+	mux.Handle("/livez", defaultMetrics.middleware(http.HandlerFunc(livezHandler)))
+	mux.Handle("/readyz", defaultMetrics.middleware(http.HandlerFunc(readyzHandler)))
+	mux.Handle("/version", defaultMetrics.middleware(http.HandlerFunc(versionHandler)))
+	mux.HandleFunc("/metrics", metricsHandler)
 	return mux
 }
 
