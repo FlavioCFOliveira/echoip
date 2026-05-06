@@ -6,10 +6,17 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"strconv"
 	"strings"
 )
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		w.Header().Set("Allow", "GET, HEAD")
+		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		return
+	}
 
 	w.Header().Set("Server", "Echo Server 1.0")
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -21,9 +28,18 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s := addr.String()
+	if r.Method == http.MethodHead {
+		// HEAD: announce the body length but write nothing. For GET,
+		// net/http auto-sets Content-Length from the body — keeping
+		// strconv.Itoa off the GET hot path saves one allocation.
+		w.Header().Set("Content-Length", strconv.Itoa(len(s)))
+		return
+	}
+
 	// #nosec G705 -- addr was strictly validated via netip.ParseAddr;
 	// response is text/plain with X-Content-Type-Options: nosniff.
-	_, _ = io.WriteString(w, addr.String())
+	_, _ = io.WriteString(w, s)
 }
 
 // clientIP resolves the client's IP address with this precedence:

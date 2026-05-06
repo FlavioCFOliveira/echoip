@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 )
 
@@ -127,6 +128,58 @@ func TestHomeHandler(t *testing.T) {
 			}
 			if nosniff := rr.Header().Get("X-Content-Type-Options"); nosniff != "nosniff" {
 				t.Errorf("X-Content-Type-Options = %q, want nosniff", nosniff)
+			}
+		})
+	}
+}
+
+func TestHomeHandler_HEAD(t *testing.T) {
+	s := scenario{
+		name:    "HEAD_XRealIP",
+		headers: map[string]string{"X-Real-IP": "203.0.113.42"},
+		wantIP:  "203.0.113.42",
+	}
+	req := newRequest(t.Context(), s)
+	req.Method = http.MethodHead
+	rr := httptest.NewRecorder()
+	homeHandler(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rr.Code)
+	}
+	if got := rr.Body.Len(); got != 0 {
+		t.Errorf("body length = %d, want 0", got)
+	}
+	wantCL := strconv.Itoa(len(s.wantIP))
+	if got := rr.Header().Get("Content-Length"); got != wantCL {
+		t.Errorf("Content-Length = %q, want %q", got, wantCL)
+	}
+}
+
+func TestHomeHandler_MethodNotAllowed(t *testing.T) {
+	for _, m := range []string{
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodOptions,
+		http.MethodConnect,
+		http.MethodTrace,
+	} {
+		t.Run(m, func(t *testing.T) {
+			req := newRequest(t.Context(), scenario{
+				headers:    map[string]string{"X-Real-IP": "203.0.113.42"},
+				remoteAddr: "203.0.113.42:54321",
+			})
+			req.Method = m
+			rr := httptest.NewRecorder()
+			homeHandler(rr, req)
+
+			if rr.Code != http.StatusMethodNotAllowed {
+				t.Errorf("status = %d, want 405", rr.Code)
+			}
+			if got := rr.Header().Get("Allow"); got != "GET, HEAD" {
+				t.Errorf("Allow = %q, want %q", got, "GET, HEAD")
 			}
 		})
 	}
