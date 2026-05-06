@@ -9,3 +9,18 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      actions:
+        patterns:
+          - "actions/*"
+      ci-tooling:
+        patterns:
+          - "golangci/*"
+          - "golang/*"
+          - "github/codeql-action"
+          - "codecov/*"
+      release-tooling:
+        patterns:
+          - "goreleaser/*"
+          - "anchore/*"
+          - "sigstore/*"
