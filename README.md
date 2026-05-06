@@ -190,7 +190,34 @@ go test -bench=. -cpuprofile=cpu.out -memprofile=mem.out ./...
 go tool pprof cpu.out
 ```
 
-End-to-end load can be measured with `wrk`, `hey`, `vegeta`, or `bombardier`.
+### Measured baseline (2026-05-06)
+
+End-to-end load test against a single locally-built binary, no reverse proxy:
+
+| Metric | Value |
+|--------|-------|
+| **Throughput** | **108,000 req/s** (peak 121,000) |
+| Latency p50 | 1.01 ms |
+| Latency p75 | 2.07 ms |
+| Latency p90 | 4.20 ms |
+| Latency p95 | 7.24 ms |
+| Latency p99 | 12.39 ms |
+| Latency max | 50.72 ms |
+| Throughput (bytes) | 31.9 MB/s |
+| HTTP codes | 100% 2xx (1,078,839 / 0) |
+
+**Hardware:** AMD Ryzen 9 5900HX (16 logical cores), Linux 6.8, Go 1.26.2.
+**Methodology:** Server bound on `127.0.0.1:18094`, `ECHOIP_RATE_LIMIT=0`, default trusted-proxy list (empty), default connection limit (10000), no TLS, no PROXY protocol decoder. Load generator: `bombardier -c 200 -d 10s -l <url>` from the same host. Access log streamed to `/dev/null` to isolate handler cost from log I/O. Numbers are loopback-bound and have no real network RTT — production deployments behind a reverse proxy or across the public internet will see higher latency dominated by network distance, not handler work.
+
+**Reproduce:**
+
+```bash
+go build -trimpath -ldflags="-s -w" -o ./echoip .
+ECHOIP_PORT=18094 ECHOIP_RATE_LIMIT=0 ./echoip > /dev/null 2>&1 &
+bombardier -c 200 -d 10s -l http://127.0.0.1:18094/
+```
+
+End-to-end load can also be measured with `wrk`, `hey`, or `vegeta`.
 
 ## Development
 
