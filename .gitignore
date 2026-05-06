@@ -1,0 +1,13 @@
+# Build output
+/echoip
+/echoip.test
+/dist/
+/build/
+
+# Test and profiling artefacts
+/*.out
+/*.prof
+
+# OS
+.DS_Store
+Thumbs.db
