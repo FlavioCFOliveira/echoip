@@ -161,6 +161,9 @@ func TestHomeHandler(t *testing.T) {
 			if srv := rr.Header().Get("Server"); srv != "" {
 				t.Errorf("Server = %q, want empty (no fingerprint leak)", srv)
 			}
+			if cc := rr.Header().Get("Cache-Control"); cc != "no-store" {
+				t.Errorf("Cache-Control = %q, want no-store", cc)
+			}
 		})
 	}
 }
