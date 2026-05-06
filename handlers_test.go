@@ -8,6 +8,7 @@ import (
 	"net/netip"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -436,5 +437,41 @@ func BenchmarkHomeHandler_E2E(b *testing.B) {
 			_, _ = io.Copy(io.Discard, resp.Body)
 			_ = resp.Body.Close()
 		}
+	})
+}
+
+// FuzzClientIP guards parseAddrPort + header parsing against panic
+// or out-of-bounds bugs on adversarial input. The headers and
+// remoteAddr come from the fuzz engine; clientIP must always
+// return without panicking and must produce either a valid Addr
+// or the zero value.
+func FuzzClientIP(f *testing.F) {
+	for _, s := range benchScenarios {
+		realIP, xff := s.headers["X-Real-IP"], s.headers["X-Forwarded-For"]
+		f.Add(realIP, xff, s.remoteAddr)
+	}
+	for _, s := range errorScenarios {
+		f.Add("", "", s.remoteAddr)
+	}
+	f.Add("", "", "")
+	f.Add("\x00\x01\x02", ",,,,", "0.0.0.0:0")
+	f.Add("not-an-ip", "1.2.3", "broken")
+	f.Add(strings.Repeat("a", 4096), strings.Repeat("1", 4096), strings.Repeat("[", 4096))
+
+	f.Fuzz(func(t *testing.T, realIP, xff, remoteAddr string) {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+		if realIP != "" {
+			req.Header.Set("X-Real-IP", realIP)
+		}
+		if xff != "" {
+			req.Header.Set("X-Forwarded-For", xff)
+		}
+		req.RemoteAddr = remoteAddr
+
+		got := clientIP(req)
+		// The only contract: never panic, and either return valid or
+		// the explicit zero. (got.IsValid() / got.String() must be safe.)
+		_ = got.IsValid()
+		_ = got.String()
 	})
 }
