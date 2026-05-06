@@ -50,28 +50,31 @@ go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
 go install golang.org/x/vuln/cmd/govulncheck@latest
 ```
 
-There is currently no test file in the repo; `go test ./...` succeeds with no tests run. The `-race` and `-shuffle=on` flags surface order-dependent and concurrency bugs as soon as tests are added — keep them on.
+Tests live in `*_test.go` alongside the code they cover. `handlers.go`, `health.go`, and `proxyproto.go` are at 100% coverage; `limit.go` is fully exercised by table-driven and concurrency tests. The `-race` and `-shuffle=on` flags catch order-dependent and concurrency bugs — keep them on.
 
-Configuration is via environment variables, both optional:
-- `ECHOIP_HOST` (default `0.0.0.0`)
-- `ECHOIP_PORT` (default `8080`; must parse as int — invalid values cause `os.Exit(1)` at startup)
+Configuration is via environment variables, all optional:
+- `ECHOIP_HOST` (default `0.0.0.0`) — validated as IP literal or plausible hostname.
+- `ECHOIP_PORT` (default `8080`) — must be `1..65535`.
+- `ECHOIP_TRUSTED_PROXIES` — comma-separated CIDR list. Empty (default) = direct-exposure mode = `X-Real-IP` / `X-Forwarded-For` ignored. Invalid CIDR fails startup.
+- `ECHOIP_TLS_CERT` / `ECHOIP_TLS_KEY` — pair of PEM file paths. Set together to serve TLS (HTTP/2). Setting only one fails startup.
+- `ECHOIP_PROXY_PROTOCOL` — `true` to enable PROXY v1/v2 listener decoder.
+- `ECHOIP_MAX_CONNS` (default `10000`) — global cap on simultaneously accepted connections; `0` disables.
+- `ECHOIP_RATE_LIMIT` (default `60`) — per-IP token-bucket requests/minute on `/`; `0` disables. Health endpoints are exempt.
 
 VS Code launch configurations in `.vscode/launch.json` provide "Launch Default" and "Launch Custom ENV" (binds to `127.0.0.1:8081`).
 
 ## Architecture
 
-Three files, all `package main`:
+`package main` only:
 
-- `init.go` — `init()` sets up the slog JSON logger, reads env vars into the package-level `HOST` and `PORT`, and registers the `/` route. Route registration happens here, not in `main`.
-- `main.go` — builds an `&http.Server{}` with explicit `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, and `IdleTimeout` (the bare `http.ListenAndServe` is unsafe for public exposure — Slowloris). Add routes in `init.go`, not here.
-- `handlers.go` — `homeHandler` delegates to `clientIP(r)`, which resolves the client IP with this precedence:
-  1. `X-Real-IP` header
-  2. `X-Forwarded-For` header (leftmost entry of the proxy chain)
-  3. `r.RemoteAddr` (split with `net.SplitHostPort`)
+- `init.go` — sets up the slog JSON logger and parses every env var into package-level globals (`HOST`, `PORT`, `TLSCert`, `TLSKey`, `ProxyProtocol`, `MaxConns`, `RateLimit`, `trustedProxies`). Pure-function validators (`validatePort`, `validateHost`, `parseTrustedProxies`) are unit-tested.
+- `main.go` — binds the listener (`(*net.ListenConfig).Listen` for ctx propagation), wraps it with the optional PROXY protocol decoder and connection limiter, builds the `*http.ServeMux` via `routes(rl)`, and hands off to `run(ctx, server, ln, certFile, keyFile)`. `run` serves until the context is cancelled (SIGTERM/SIGINT) and then drains via `server.Shutdown` with a 30s deadline. `/readyz` flips to 503 the moment shutdown begins.
+- `handlers.go` — `homeHandler` accepts only GET/HEAD (others get 405 + `Allow`); delegates to `clientIP(r)`. `clientIP` parses `r.RemoteAddr` once via `netip.ParseAddrPort` (zero-alloc), then if the parsed address falls inside one of `trustedProxies` it consults `X-Real-IP` then `X-Forwarded-For` (leftmost). Empty `trustedProxies` = headers ignored. Response is `text/plain; charset=utf-8` with `X-Content-Type-Options: nosniff`; `Server` is intentionally absent.
+- `health.go` — `/healthz`, `/livez`, `/readyz` handlers + the shared `methodAllowed` and `writeOK` helpers. `readyzHandler` is gated by an `atomic.Bool` (`ready`) flipped to true in `main` once the listener is open.
+- `limit.go` — `connLimitListener` (semaphore-backed listener) and `rateLimiter` (token bucket per `netip.Addr` in a `sync.Map` with periodic eviction).
+- `proxyproto.go` — in-house PROXY v1 (text) and v2 (binary, AF_INET/AF_INET6) decoder. Mode is "require": connections without a header are dropped with a slog WARN.
 
-  Each candidate is validated through `netip.ParseAddr`; invalid candidates fall through to the next source. The handler returns the canonical `netip.Addr.String()` form. The response sets `Content-Type: text/plain; charset=utf-8` and `X-Content-Type-Options: nosniff` to defeat content-type sniffing.
-
-The header-first precedence assumes deployment behind a trusted reverse proxy. In a direct-exposure context these headers are client-controlled and spoofable — keep that trust assumption in mind when modifying the handler.
+The header-first precedence inside the trust gate still assumes the listed CIDRs are actually upstream of the deployment. Strip or overwrite proxy headers at your trust boundary so external clients cannot reach the service with forged values.
 
 ## CI
 
