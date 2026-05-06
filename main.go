@@ -87,6 +87,7 @@ func routes(rl *rateLimiter) *http.ServeMux {
 	mux.HandleFunc("/healthz", healthzHandler)
 	mux.HandleFunc("/livez", livezHandler)
 	mux.HandleFunc("/readyz", readyzHandler)
+	mux.HandleFunc("/version", versionHandler)
 	return mux
 }
 
