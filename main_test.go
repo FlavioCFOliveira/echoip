@@ -5,9 +5,27 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 )
+
+func TestRoutes_AllPathsRegistered(t *testing.T) {
+	mux := routes()
+	for _, p := range []string{"/", "/healthz", "/livez", "/readyz"} {
+		t.Run(p, func(t *testing.T) {
+			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, p, nil)
+			req.RemoteAddr = "127.0.0.1:1234"
+			rr := httptest.NewRecorder()
+			mux.ServeHTTP(rr, req)
+			// /readyz returns 503 unless ready is set; we only assert
+			// the route is wired (not 404).
+			if rr.Code == http.StatusNotFound {
+				t.Errorf("path %q routed to NotFound", p)
+			}
+		})
+	}
+}
 
 // TestRun_GracefulShutdownDrainsInflight verifies that an in-flight
 // request started before context cancellation completes successfully,

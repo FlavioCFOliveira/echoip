@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"net/netip"
 	"os"
 	"strconv"
@@ -49,13 +48,6 @@ func init() {
 		}
 		trustedProxies = parsed
 	}
-
-	// initializing the routes
-	http.HandleFunc("/", homeHandler)
-	http.HandleFunc("/healthz", healthzHandler)
-	http.HandleFunc("/livez", livezHandler)
-	http.HandleFunc("/readyz", readyzHandler)
-
 }
 
 func validatePort(p int) error {

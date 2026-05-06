@@ -30,6 +30,7 @@ func main() {
 	}
 
 	server := &http.Server{
+		Handler:           routes(),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -49,6 +50,19 @@ func main() {
 		os.Exit(1)
 	}
 	slog.Info("Server stopped cleanly")
+}
+
+// routes builds the dedicated *http.ServeMux. Tests construct their
+// own mux for isolation; main wires this one into the production
+// http.Server. http.DefaultServeMux is intentionally unused so that
+// future imports cannot register conflicting routes via init().
+func routes() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", homeHandler)
+	mux.HandleFunc("/healthz", healthzHandler)
+	mux.HandleFunc("/livez", livezHandler)
+	mux.HandleFunc("/readyz", readyzHandler)
+	return mux
 }
 
 // run serves until ctx is cancelled or the server fails. On
