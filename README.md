@@ -98,6 +98,7 @@ Configuration is environment-variable based; both variables are optional.
 |----------|---------|-------|
 | `ECHOIP_HOST` | `0.0.0.0` | Bind address. |
 | `ECHOIP_PORT` | `8080` | TCP port. Must parse as int — invalid values cause `os.Exit(1)` at startup. |
+| `ECHOIP_TRUSTED_PROXIES` | _(empty)_ | Comma-separated CIDR list of reverse-proxy networks whose `X-Real-IP` / `X-Forwarded-For` headers are trustworthy. Empty = direct-exposure mode = headers ignored. Invalid CIDR fails startup. |
 
 ## How it works
 
@@ -109,15 +110,14 @@ Three Go files, one responsibility each:
 | `main.go` | Constructs `&http.Server{}` with hardened timeouts and starts listening. |
 | `handlers.go` | `homeHandler` resolves the client IP and writes it as plain text. |
 
-**Client-IP resolution precedence**, in order:
+**Client-IP resolution** is gated by `ECHOIP_TRUSTED_PROXIES`. The TCP `RemoteAddr` is parsed first via `netip.ParseAddrPort` (zero-allocation). Then:
 
-1. `X-Real-IP` header
-2. `X-Forwarded-For` header (leftmost entry of the proxy chain)
-3. The TCP connection's `RemoteAddr`
+- **If `RemoteAddr` falls inside one of the trusted-proxy prefixes**, `X-Real-IP` is consulted, then `X-Forwarded-For` (leftmost entry). Each header value is validated with `netip.ParseAddr`; invalid candidates fall through to the next source, and ultimately to the parsed `RemoteAddr`.
+- **Otherwise** (or when the trusted-proxy list is empty), the parsed `RemoteAddr` is returned directly. Proxy headers are not consulted, so they cannot be spoofed by arbitrary clients.
 
-Each candidate is validated with `netip.ParseAddr`; an invalid candidate falls through to the next source. The response body is the canonical `netip.Addr.String()` form.
+The response body is the canonical `netip.Addr.String()` form.
 
-> **Trust model.** The header-first precedence assumes deployment behind a trusted reverse proxy. In a direct-exposure context these headers are client-controlled and spoofable — strip or overwrite them at your trust boundary.
+> **Trust model.** The default — empty `ECHOIP_TRUSTED_PROXIES` — is direct-exposure-safe: spoofed `X-Real-IP` headers are ignored. To honour proxy headers in production, set `ECHOIP_TRUSTED_PROXIES` to the CIDR of every reverse proxy that fronts the service (e.g. `ECHOIP_TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12` for an internal LB). Strip or overwrite proxy headers at your trust boundary so external clients cannot reach the service with forged values.
 
 ## Use cases
 

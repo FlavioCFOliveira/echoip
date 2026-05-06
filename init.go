@@ -32,6 +32,15 @@ func init() {
 		PORT = portint
 	}
 
+	if proxies := os.Getenv("ECHOIP_TRUSTED_PROXIES"); proxies != "" {
+		parsed, err := parseTrustedProxies(proxies)
+		if err != nil {
+			slog.Error("Invalid ECHOIP_TRUSTED_PROXIES", "Error", err.Error())
+			os.Exit(1)
+		}
+		trustedProxies = parsed
+	}
+
 	// initializing the routes
 	http.HandleFunc("/", homeHandler)
 	http.HandleFunc("/healthz", healthzHandler)

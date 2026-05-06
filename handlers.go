@@ -1,14 +1,20 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/netip"
 	"strconv"
 	"strings"
 )
+
+// trustedProxies holds the parsed CIDR list of reverse proxies whose
+// X-Real-IP / X-Forwarded-For headers are trustworthy. Empty means
+// direct-exposure mode — proxy headers are ignored entirely so they
+// cannot be spoofed by arbitrary clients.
+var trustedProxies []netip.Prefix
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 
@@ -40,15 +46,34 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = io.WriteString(w, s)
 }
 
-// clientIP resolves the client's IP address with this precedence:
-//  1. X-Real-IP header
-//  2. X-Forwarded-For header (leftmost entry of the proxy chain)
-//  3. TCP RemoteAddr
+// clientIP resolves the client's IP address. Resolution depends on
+// trustedProxies:
 //
-// Each candidate is validated through netip.ParseAddr; invalid candidates
-// fall through to the next source. Returns the zero netip.Addr when no
-// valid IP can be determined.
+//	Empty trustedProxies → return the parsed RemoteAddr (proxy
+//	headers are ignored so external clients cannot spoof them).
+//
+//	Non-empty → if RemoteAddr falls inside one of the prefixes,
+//	consult X-Real-IP then X-Forwarded-For (leftmost). Otherwise
+//	return the parsed RemoteAddr.
+//
+// Each header candidate is validated through netip.ParseAddr; invalid
+// candidates fall through to the next source. Returns the zero
+// netip.Addr when no valid IP can be determined.
 func clientIP(r *http.Request) netip.Addr {
+	// netip.ParseAddrPort handles both "host:port" and "[ipv6]:port"
+	// without the per-call string allocation that net.SplitHostPort
+	// incurs — preserving the zero-alloc hot path under load.
+	ap, err := netip.ParseAddrPort(r.RemoteAddr)
+	if err != nil {
+		slog.Error("Request", "Error", err.Error())
+		return netip.Addr{}
+	}
+	remote := ap.Addr()
+
+	if !remoteIsTrusted(remote) {
+		return remote
+	}
+
 	// Direct map access with canonical keys bypasses the per-call key
 	// canonicalization (and its allocation) inside http.Header.Get. Safe
 	// because net/http always stores keys in canonical form on parse.
@@ -69,11 +94,42 @@ func clientIP(r *http.Request) netip.Addr {
 		}
 	}
 
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		slog.Error("Request", "Error", err.Error())
-		return netip.Addr{}
+	return remote
+}
+
+// remoteIsTrusted reports whether addr falls inside any of the
+// configured trusted-proxy prefixes.
+func remoteIsTrusted(addr netip.Addr) bool {
+	if !addr.IsValid() || len(trustedProxies) == 0 {
+		return false
 	}
-	a, _ := netip.ParseAddr(host)
-	return a
+	for _, p := range trustedProxies {
+		if p.Contains(addr) {
+			return true
+		}
+	}
+	return false
+}
+
+// parseTrustedProxies parses a comma-separated list of CIDRs into
+// []netip.Prefix. Empty strings (including whitespace-only entries)
+// are skipped. Any invalid CIDR returns an error naming the offender.
+func parseTrustedProxies(s string) ([]netip.Prefix, error) {
+	if s == "" {
+		return nil, nil
+	}
+	parts := strings.Split(s, ",")
+	out := make([]netip.Prefix, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		prefix, err := netip.ParsePrefix(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid CIDR %q: %w", p, err)
+		}
+		out = append(out, prefix)
+	}
+	return out, nil
 }

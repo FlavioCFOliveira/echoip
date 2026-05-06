@@ -5,11 +5,33 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
+	"os"
 	"strconv"
 	"testing"
 )
 
+// TestMain installs a default trusted-proxy list covering the loopback
+// addresses used by the test scenarios. Tests that need a different
+// list use withTrustedProxies(t, ...).
+func TestMain(m *testing.M) {
+	trustedProxies = []netip.Prefix{
+		netip.MustParsePrefix("127.0.0.0/8"),
+		netip.MustParsePrefix("::1/128"),
+	}
+	os.Exit(m.Run())
+}
+
+func withTrustedProxies(t *testing.T, prefixes []netip.Prefix) {
+	t.Helper()
+	saved := trustedProxies
+	trustedProxies = prefixes
+	t.Cleanup(func() { trustedProxies = saved })
+}
+
 // scenarios used by both clientIP and homeHandler tests/benchmarks.
+// Header-based scenarios use a loopback RemoteAddr so the default
+// trusted-proxy list (set in TestMain) honours them.
 type scenario struct {
 	name       string
 	headers    map[string]string
@@ -19,24 +41,28 @@ type scenario struct {
 
 var benchScenarios = []scenario{
 	{
-		name:    "XRealIP_IPv4",
-		headers: map[string]string{"X-Real-IP": "203.0.113.42"},
-		wantIP:  "203.0.113.42",
+		name:       "XRealIP_IPv4",
+		headers:    map[string]string{"X-Real-IP": "203.0.113.42"},
+		remoteAddr: "127.0.0.1:1234",
+		wantIP:     "203.0.113.42",
 	},
 	{
-		name:    "XRealIP_IPv6",
-		headers: map[string]string{"X-Real-IP": "2001:db8::1"},
-		wantIP:  "2001:db8::1",
+		name:       "XRealIP_IPv6",
+		headers:    map[string]string{"X-Real-IP": "2001:db8::1"},
+		remoteAddr: "127.0.0.1:1234",
+		wantIP:     "2001:db8::1",
 	},
 	{
-		name:    "XForwardedFor_Single",
-		headers: map[string]string{"X-Forwarded-For": "203.0.113.42"},
-		wantIP:  "203.0.113.42",
+		name:       "XForwardedFor_Single",
+		headers:    map[string]string{"X-Forwarded-For": "203.0.113.42"},
+		remoteAddr: "127.0.0.1:1234",
+		wantIP:     "203.0.113.42",
 	},
 	{
-		name:    "XForwardedFor_Chain3",
-		headers: map[string]string{"X-Forwarded-For": "203.0.113.42, 198.51.100.7, 10.0.0.1"},
-		wantIP:  "203.0.113.42",
+		name:       "XForwardedFor_Chain3",
+		headers:    map[string]string{"X-Forwarded-For": "203.0.113.42, 198.51.100.7, 10.0.0.1"},
+		remoteAddr: "127.0.0.1:1234",
+		wantIP:     "203.0.113.42",
 	},
 	{
 		name:       "RemoteAddr_IPv4",
@@ -49,6 +75,9 @@ var benchScenarios = []scenario{
 		wantIP:     "2001:db8::1",
 	},
 	{
+		// Untrusted RemoteAddr — proxy headers are ignored even when
+		// present, so invalid header content does not matter; clientIP
+		// returns the parsed RemoteAddr directly.
 		name: "Fallthrough_BothHeadersInvalid",
 		headers: map[string]string{
 			"X-Real-IP":       "not-an-ip",
@@ -133,11 +162,117 @@ func TestHomeHandler(t *testing.T) {
 	}
 }
 
+func TestClientIP_TrustModel(t *testing.T) {
+	loopbackOnly := []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}
+
+	cases := []struct {
+		name    string
+		trusted []netip.Prefix
+		s       scenario
+		want    string
+	}{
+		{
+			name:    "TrustedRemote_HonoursXRealIP",
+			trusted: loopbackOnly,
+			s: scenario{
+				headers:    map[string]string{"X-Real-IP": "203.0.113.42"},
+				remoteAddr: "127.0.0.1:1234",
+			},
+			want: "203.0.113.42",
+		},
+		{
+			name:    "UntrustedRemote_IgnoresXRealIPSpoof",
+			trusted: loopbackOnly,
+			s: scenario{
+				headers:    map[string]string{"X-Real-IP": "1.1.1.1"},
+				remoteAddr: "8.8.8.8:54321",
+			},
+			want: "8.8.8.8",
+		},
+		{
+			name:    "UntrustedRemote_IgnoresXForwardedForSpoof",
+			trusted: loopbackOnly,
+			s: scenario{
+				headers:    map[string]string{"X-Forwarded-For": "1.1.1.1"},
+				remoteAddr: "8.8.8.8:54321",
+			},
+			want: "8.8.8.8",
+		},
+		{
+			name:    "EmptyTrustList_IgnoresHeaders",
+			trusted: nil,
+			s: scenario{
+				headers:    map[string]string{"X-Real-IP": "1.1.1.1"},
+				remoteAddr: "127.0.0.1:1234",
+			},
+			want: "127.0.0.1",
+		},
+		{
+			name:    "TrustedRemote_BothHeadersInvalid_FallsBackToRemote",
+			trusted: loopbackOnly,
+			s: scenario{
+				headers:    map[string]string{"X-Real-IP": "not-ip", "X-Forwarded-For": "also-not"},
+				remoteAddr: "127.0.0.1:1234",
+			},
+			want: "127.0.0.1",
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			withTrustedProxies(t, tc.trusted)
+			req := newRequest(t.Context(), tc.s)
+			got := clientIP(req)
+			if !got.IsValid() || got.String() != tc.want {
+				t.Errorf("clientIP = %q, want %q", got.String(), tc.want)
+			}
+		})
+	}
+}
+
+func TestParseTrustedProxies(t *testing.T) {
+	cases := []struct {
+		name    string
+		in      string
+		wantLen int
+		wantErr bool
+	}{
+		{name: "Empty", in: "", wantLen: 0},
+		{name: "SingleIPv4", in: "10.0.0.0/8", wantLen: 1},
+		{name: "SingleIPv6", in: "::1/128", wantLen: 1},
+		{name: "Multiple", in: "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16", wantLen: 3},
+		{name: "Whitespace", in: "  10.0.0.0/8  ,   172.16.0.0/12  ", wantLen: 2},
+		{name: "EmptyEntries", in: "10.0.0.0/8,,,", wantLen: 1},
+		{name: "Invalid", in: "not-a-cidr", wantErr: true},
+		{name: "MissingMask", in: "10.0.0.0", wantErr: true},
+		{name: "MixedValidInvalid", in: "10.0.0.0/8,garbage", wantErr: true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := parseTrustedProxies(tc.in)
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("parseTrustedProxies(%q) = %v, want error", tc.in, got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("parseTrustedProxies(%q) error: %v", tc.in, err)
+			}
+			if len(got) != tc.wantLen {
+				t.Errorf("parseTrustedProxies(%q) len = %d, want %d", tc.in, len(got), tc.wantLen)
+			}
+		})
+	}
+}
+
 func TestHomeHandler_HEAD(t *testing.T) {
 	s := scenario{
-		name:    "HEAD_XRealIP",
-		headers: map[string]string{"X-Real-IP": "203.0.113.42"},
-		wantIP:  "203.0.113.42",
+		name:       "HEAD_XRealIP",
+		headers:    map[string]string{"X-Real-IP": "203.0.113.42"},
+		remoteAddr: "127.0.0.1:1234",
+		wantIP:     "203.0.113.42",
 	}
 	req := newRequest(t.Context(), s)
 	req.Method = http.MethodHead
