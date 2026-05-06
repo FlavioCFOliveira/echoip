@@ -96,6 +96,10 @@ jobs:
           go-version-file: go.mod
 
       - name: Test
+        # Force bash so the ./... package selector is parsed identically
+        # across runners — PowerShell on Windows splits arguments around
+        # the dot in `coverage.out` and breaks the build.
+        shell: bash
         run: go test -race -shuffle=on -coverprofile=coverage.out -covermode=atomic -v ./...
 
       - name: Coverage gate
