@@ -17,7 +17,11 @@ var ProxyProtocol bool // ECHOIP_PROXY_PROTOCOL=true wraps the listener
 var MaxConns int       // ECHOIP_MAX_CONNS, 0 disables the connection cap
 var RateLimit int      // ECHOIP_RATE_LIMIT requests/min per client IP, 0 disables
 
-func init() {
+// initConfig reads every ECHOIP_* env var into package-level globals
+// and exits the process on any validation error. Called from main()
+// rather than a package init() so tests can run without any env
+// dependency and override the globals directly.
+func initConfig() {
 
 	// initializing the logger
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))

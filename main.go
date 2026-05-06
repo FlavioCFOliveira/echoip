@@ -16,6 +16,8 @@ import (
 const shutdownTimeout = 30 * time.Second
 
 func main() {
+	initConfig()
+
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
