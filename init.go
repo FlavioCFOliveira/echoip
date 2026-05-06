@@ -11,6 +11,8 @@ import (
 
 var HOST string
 var PORT int
+var TLSCert string // ECHOIP_TLS_CERT — empty means plain HTTP
+var TLSKey string  // ECHOIP_TLS_KEY  — empty means plain HTTP
 
 func init() {
 
@@ -47,6 +49,13 @@ func init() {
 			os.Exit(1)
 		}
 		trustedProxies = parsed
+	}
+
+	TLSCert = os.Getenv("ECHOIP_TLS_CERT")
+	TLSKey = os.Getenv("ECHOIP_TLS_KEY")
+	if (TLSCert == "") != (TLSKey == "") {
+		slog.Error("ECHOIP_TLS_CERT and ECHOIP_TLS_KEY must be set together (or both empty)")
+		os.Exit(1)
 	}
 }
 

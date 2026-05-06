@@ -52,7 +52,7 @@ func TestRun_GracefulShutdownDrainsInflight(t *testing.T) {
 	defer cancel()
 
 	runErr := make(chan error, 1)
-	go func() { runErr <- run(ctx, server, ln) }()
+	go func() { runErr <- run(ctx, server, ln, "", "") }()
 
 	type result struct {
 		status int
@@ -116,7 +116,7 @@ func TestRun_ServerErrorPropagates(t *testing.T) {
 	}
 
 	done := make(chan error, 1)
-	go func() { done <- run(t.Context(), server, ln) }()
+	go func() { done <- run(t.Context(), server, ln, "", "") }()
 
 	select {
 	case err := <-done:

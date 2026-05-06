@@ -45,7 +45,7 @@ func main() {
 	// picks up immediately rather than racing the goroutine.
 	ready.Store(true)
 
-	if err := run(ctx, server, ln); err != nil {
+	if err := run(ctx, server, ln, TLSCert, TLSKey); err != nil {
 		slog.Error("Server error", "Error", err.Error())
 		os.Exit(1)
 	}
@@ -67,11 +67,19 @@ func routes() *http.ServeMux {
 
 // run serves until ctx is cancelled or the server fails. On
 // cancellation, /readyz is flipped to 503 and server.Shutdown drains
-// in-flight requests within shutdownTimeout.
-func run(ctx context.Context, server *http.Server, ln net.Listener) error {
+// in-flight requests within shutdownTimeout. If both certFile and
+// keyFile are non-empty, the listener is upgraded to TLS via
+// server.ServeTLS; otherwise plain HTTP is served.
+func run(ctx context.Context, server *http.Server, ln net.Listener, certFile, keyFile string) error {
 	serverErr := make(chan error, 1)
 	go func() {
-		if err := server.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		var err error
+		if certFile != "" && keyFile != "" {
+			err = server.ServeTLS(ln, certFile, keyFile)
+		} else {
+			err = server.Serve(ln)
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
 		close(serverErr)

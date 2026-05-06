@@ -99,6 +99,8 @@ Configuration is environment-variable based; both variables are optional.
 | `ECHOIP_HOST` | `0.0.0.0` | Bind address. |
 | `ECHOIP_PORT` | `8080` | TCP port. Must parse as int — invalid values cause `os.Exit(1)` at startup. |
 | `ECHOIP_TRUSTED_PROXIES` | _(empty)_ | Comma-separated CIDR list of reverse-proxy networks whose `X-Real-IP` / `X-Forwarded-For` headers are trustworthy. Empty = direct-exposure mode = headers ignored. Invalid CIDR fails startup. |
+| `ECHOIP_TLS_CERT` | _(empty)_ | Path to PEM-encoded certificate. If set together with `ECHOIP_TLS_KEY`, the listener serves TLS (and HTTP/2) instead of plain HTTP. Setting only one of the pair fails startup. |
+| `ECHOIP_TLS_KEY` | _(empty)_ | Path to PEM-encoded private key — see `ECHOIP_TLS_CERT`. |
 
 ## How it works
 
