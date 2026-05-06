@@ -11,7 +11,7 @@ import (
 )
 
 func TestRoutes_AllPathsRegistered(t *testing.T) {
-	mux := routes()
+	mux := routes(nil)
 	for _, p := range []string{"/", "/healthz", "/livez", "/readyz"} {
 		t.Run(p, func(t *testing.T) {
 			req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, p, nil)

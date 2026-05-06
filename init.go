@@ -14,6 +14,8 @@ var PORT int
 var TLSCert string     // ECHOIP_TLS_CERT — empty means plain HTTP
 var TLSKey string      // ECHOIP_TLS_KEY  — empty means plain HTTP
 var ProxyProtocol bool // ECHOIP_PROXY_PROTOCOL=true wraps the listener
+var MaxConns int       // ECHOIP_MAX_CONNS, 0 disables the connection cap
+var RateLimit int      // ECHOIP_RATE_LIMIT requests/min per client IP, 0 disables
 
 func init() {
 
@@ -60,6 +62,26 @@ func init() {
 	}
 
 	ProxyProtocol = os.Getenv("ECHOIP_PROXY_PROTOCOL") == "true"
+
+	MaxConns = 10000
+	if s := os.Getenv("ECHOIP_MAX_CONNS"); s != "" {
+		n, err := strconv.Atoi(s)
+		if err != nil || n < 0 {
+			slog.Error("Invalid ECHOIP_MAX_CONNS", "value", s)
+			os.Exit(1)
+		}
+		MaxConns = n
+	}
+
+	RateLimit = 60
+	if s := os.Getenv("ECHOIP_RATE_LIMIT"); s != "" {
+		n, err := strconv.Atoi(s)
+		if err != nil || n < 0 {
+			slog.Error("Invalid ECHOIP_RATE_LIMIT", "value", s)
+			os.Exit(1)
+		}
+		RateLimit = n
+	}
 }
 
 func validatePort(p int) error {

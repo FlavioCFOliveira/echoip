@@ -101,6 +101,9 @@ Configuration is environment-variable based; both variables are optional.
 | `ECHOIP_TRUSTED_PROXIES` | _(empty)_ | Comma-separated CIDR list of reverse-proxy networks whose `X-Real-IP` / `X-Forwarded-For` headers are trustworthy. Empty = direct-exposure mode = headers ignored. Invalid CIDR fails startup. |
 | `ECHOIP_TLS_CERT` | _(empty)_ | Path to PEM-encoded certificate. If set together with `ECHOIP_TLS_KEY`, the listener serves TLS (and HTTP/2) instead of plain HTTP. Setting only one of the pair fails startup. |
 | `ECHOIP_TLS_KEY` | _(empty)_ | Path to PEM-encoded private key — see `ECHOIP_TLS_CERT`. |
+| `ECHOIP_PROXY_PROTOCOL` | _(empty)_ | Set to `true` to enable the in-house PROXY protocol v1/v2 listener decoder. Required when fronting echoip with an L4 LB (HAProxy, AWS NLB, GCP NLB) that does not inject HTTP headers. Connections without a valid PROXY header are dropped. |
+| `ECHOIP_MAX_CONNS` | `10000` | Maximum simultaneous accepted connections. Excess Accepts block until a slot frees. `0` disables the cap. |
+| `ECHOIP_RATE_LIMIT` | `60` | Per-client-IP token-bucket rate limit, in requests/minute. Burst equals the limit. Exceeding requests get `429` with `Retry-After`. `0` disables rate limiting. Health endpoints are exempt. |
 
 ## How it works
 

@@ -32,9 +32,20 @@ func main() {
 		ln = &proxyProtoListener{Listener: ln}
 		slog.Info("PROXY protocol decoder enabled on listener")
 	}
+	if MaxConns > 0 {
+		ln = newConnLimitListener(ln, MaxConns)
+		slog.Info("Connection limit enabled on listener", "max", MaxConns)
+	}
+
+	var rl *rateLimiter
+	if RateLimit > 0 {
+		rl = newRateLimiter(RateLimit)
+		go rl.startCleanup(ctx, time.Minute, 10*time.Minute)
+		slog.Info("Per-IP rate limit enabled", "requests_per_minute", RateLimit)
+	}
 
 	server := &http.Server{
-		Handler:           routes(),
+		Handler:           routes(rl),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
@@ -60,9 +71,15 @@ func main() {
 // own mux for isolation; main wires this one into the production
 // http.Server. http.DefaultServeMux is intentionally unused so that
 // future imports cannot register conflicting routes via init().
-func routes() *http.ServeMux {
+//
+// rl is applied only to / so health probes are never throttled.
+func routes(rl *rateLimiter) *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/", homeHandler)
+	var home http.Handler = http.HandlerFunc(homeHandler)
+	if rl != nil {
+		home = rl.middleware(home)
+	}
+	mux.Handle("/", home)
 	mux.HandleFunc("/healthz", healthzHandler)
 	mux.HandleFunc("/livez", livezHandler)
 	mux.HandleFunc("/readyz", readyzHandler)
