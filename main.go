@@ -83,11 +83,14 @@ func routes(rl *rateLimiter) *http.ServeMux {
 	if rl != nil {
 		home = rl.middleware(home)
 	}
-	mux.Handle("/", defaultMetrics.middleware(home))
-	mux.Handle("/healthz", defaultMetrics.middleware(http.HandlerFunc(healthzHandler)))
-	mux.Handle("/livez", defaultMetrics.middleware(http.HandlerFunc(livezHandler)))
-	mux.Handle("/readyz", defaultMetrics.middleware(http.HandlerFunc(readyzHandler)))
-	mux.Handle("/version", defaultMetrics.middleware(http.HandlerFunc(versionHandler)))
+	wrap := func(h http.Handler) http.Handler {
+		return accessLogMiddleware(defaultMetrics.middleware(h))
+	}
+	mux.Handle("/", wrap(home))
+	mux.Handle("/healthz", wrap(http.HandlerFunc(healthzHandler)))
+	mux.Handle("/livez", wrap(http.HandlerFunc(livezHandler)))
+	mux.Handle("/readyz", wrap(http.HandlerFunc(readyzHandler)))
+	mux.Handle("/version", wrap(http.HandlerFunc(versionHandler)))
 	mux.HandleFunc("/metrics", metricsHandler)
 	return mux
 }
