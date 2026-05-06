@@ -1,0 +1,19 @@
+# Don't copy build/test/git/IDE artefacts into the build context.
+.git
+.github
+.idea
+.vscode
+.gitignore
+.golangci.yml
+*.out
+*.prof
+*.test
+echoip
+echoip.test
+dist/
+build/
+README.md
+LICENSE
+CLAUDE.md
+Dockerfile
+.dockerignore
