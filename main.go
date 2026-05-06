@@ -34,6 +34,10 @@ func main() {
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       120 * time.Second,
+		// Route the package "log" output net/http uses for accept,
+		// TLS handshake, and panic-handler errors through the same
+		// JSON slog handler everything else uses.
+		ErrorLog: slog.NewLogLogger(slog.Default().Handler(), slog.LevelError),
 	}
 
 	// Listener is bound — flip readiness before serving so /readyz
