@@ -3,8 +3,13 @@
 A high-performance, zero-dependency HTTP service that returns the requesting client's public IP address as plain text. Written in Go, deployed at **[echo-ip.com](https://echo-ip.com)**, and engineered for very high concurrency under sustained load.
 
 [![CI Go](https://github.com/FlavioCFOliveira/echoip/actions/workflows/go.yml/badge.svg?branch=main)](https://github.com/FlavioCFOliveira/echoip/actions/workflows/go.yml)
+[![CodeQL](https://github.com/FlavioCFOliveira/echoip/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/FlavioCFOliveira/echoip/actions/workflows/codeql.yml)
 [![codecov](https://codecov.io/gh/FlavioCFOliveira/echoip/branch/main/graph/badge.svg)](https://codecov.io/gh/FlavioCFOliveira/echoip)
+[![Go Report Card](https://goreportcard.com/badge/github.com/FlavioCFOliveira/echoip)](https://goreportcard.com/report/github.com/FlavioCFOliveira/echoip)
+[![Go Reference](https://pkg.go.dev/badge/github.com/FlavioCFOliveira/echoip.svg)](https://pkg.go.dev/github.com/FlavioCFOliveira/echoip)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/FlavioCFOliveira/echoip)](https://go.dev/)
+[![Latest Release](https://img.shields.io/github/v/release/FlavioCFOliveira/echoip?include_prereleases&sort=semver)](https://github.com/FlavioCFOliveira/echoip/releases)
+[![Last Commit](https://img.shields.io/github/last-commit/FlavioCFOliveira/echoip/main)](https://github.com/FlavioCFOliveira/echoip/commits/main)
 [![License: MIT](https://img.shields.io/github/license/FlavioCFOliveira/echoip)](LICENSE)
 
 ## What is echoip?
