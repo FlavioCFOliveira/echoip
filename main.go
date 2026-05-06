@@ -50,6 +50,8 @@ func main() {
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    16 << 10, // 16 KB — generous for legitimate clients, tight against bloat
+
 		// Route the package "log" output net/http uses for accept,
 		// TLS handshake, and panic-handler errors through the same
 		// JSON slog handler everything else uses.
