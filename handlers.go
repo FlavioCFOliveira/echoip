@@ -35,13 +35,17 @@ func homeHandler(w http.ResponseWriter, r *http.Request) {
 // fall through to the next source. Returns the zero netip.Addr when no
 // valid IP can be determined.
 func clientIP(r *http.Request) netip.Addr {
-	if h := r.Header.Get("X-Real-IP"); h != "" {
-		if a, err := netip.ParseAddr(strings.TrimSpace(h)); err == nil {
+	// Direct map access with canonical keys bypasses the per-call key
+	// canonicalization (and its allocation) inside http.Header.Get. Safe
+	// because net/http always stores keys in canonical form on parse.
+	if v := r.Header["X-Real-Ip"]; len(v) > 0 && v[0] != "" {
+		if a, err := netip.ParseAddr(strings.TrimSpace(v[0])); err == nil {
 			return a
 		}
 	}
 
-	if h := r.Header.Get("X-Forwarded-For"); h != "" {
+	if v := r.Header["X-Forwarded-For"]; len(v) > 0 && v[0] != "" {
+		h := v[0]
 		first := h
 		if i := strings.IndexByte(h, ','); i >= 0 {
 			first = h[:i]
