@@ -55,17 +55,20 @@ func TestRateLimiter_Cleanup(t *testing.T) {
 	rl.allow(addr)
 
 	ctx, cancel := context.WithCancel(t.Context())
-	go rl.startCleanup(ctx, 10*time.Millisecond, 1*time.Millisecond)
+	// maxAge must exceed the system clock granularity (Windows is
+	// ~15.6 ms by default) so the cleanup tick reliably observes
+	// time.Now().Sub(lastSeen) > maxAge even on coarse clocks.
+	go rl.startCleanup(ctx, 20*time.Millisecond, 50*time.Millisecond)
 	defer cancel()
 
-	deadline := time.Now().Add(500 * time.Millisecond)
+	deadline := time.Now().Add(2 * time.Second)
 	for time.Now().Before(deadline) {
 		if rl.purgedTotal.Load() > 0 {
 			return
 		}
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 	}
-	t.Fatal("cleanup did not purge a stale bucket within 500ms")
+	t.Fatal("cleanup did not purge a stale bucket within 2s")
 }
 
 func TestConnLimitListener_BlocksAtCapAndReleasesOnClose(t *testing.T) {

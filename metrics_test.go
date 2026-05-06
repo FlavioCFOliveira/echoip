@@ -11,11 +11,11 @@ import (
 
 func TestMetrics_ObserveAndRender(t *testing.T) {
 	m := &metrics{}
-	m.observe(200, 50*time.Microsecond)   // 0.00005s → bucket 0 (<=0.0001)
-	m.observe(200, 500*time.Microsecond)  // 0.0005s → bucket 1 (<=0.001)
-	m.observe(404, 2*time.Millisecond)    // 0.002s → bucket 2 (<=0.005)
-	m.observe(500, 200*time.Millisecond)  // 0.2s → bucket 6 (<=0.5)
-	m.observe(200, 5*time.Second)         // > 1s → +Inf
+	m.observe(200, 50*time.Microsecond)  // 0.00005s → bucket 0 (<=0.0001)
+	m.observe(200, 500*time.Microsecond) // 0.0005s → bucket 1 (<=0.001)
+	m.observe(404, 2*time.Millisecond)   // 0.002s → bucket 2 (<=0.005)
+	m.observe(500, 200*time.Millisecond) // 0.2s → bucket 6 (<=0.5)
+	m.observe(200, 5*time.Second)        // > 1s → +Inf
 
 	var buf bytes.Buffer
 	m.write(&buf)
