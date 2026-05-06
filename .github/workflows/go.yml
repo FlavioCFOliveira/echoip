@@ -92,6 +92,18 @@ jobs:
       - name: Test
         run: go test -race -shuffle=on -coverprofile=coverage.out -covermode=atomic -v ./...
 
+      - name: Coverage gate
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          THRESHOLD=70
+          PCT=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$3); print $3}')
+          echo "Total coverage: ${PCT}% (gate: ${THRESHOLD}%)"
+          awk -v p="$PCT" -v t="$THRESHOLD" 'BEGIN { exit !(p+0 >= t+0) }' || {
+            echo "Coverage ${PCT}% is below the ${THRESHOLD}% gate."
+            exit 1
+          }
+
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest'
         uses: codecov/codecov-action@aa56896cf108bd10b5eb883cd1d24196da57f695 # v5.5.4
