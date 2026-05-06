@@ -34,5 +34,8 @@ func init() {
 
 	// initializing the routes
 	http.HandleFunc("/", homeHandler)
+	http.HandleFunc("/healthz", healthzHandler)
+	http.HandleFunc("/livez", livezHandler)
+	http.HandleFunc("/readyz", readyzHandler)
 
 }

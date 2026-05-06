@@ -19,6 +19,10 @@ func main() {
 		IdleTimeout:       120 * time.Second,
 	}
 
+	// Flip readiness just before handing control to the server so
+	// /readyz returns 200 once traffic can actually be served.
+	ready.Store(true)
+
 	if err := server.ListenAndServe(); err != nil {
 		slog.Error("Error starting echo-ip service", "Error", err.Error())
 	}

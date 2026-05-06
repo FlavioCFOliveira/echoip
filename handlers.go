@@ -12,9 +12,7 @@ import (
 
 func homeHandler(w http.ResponseWriter, r *http.Request) {
 
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	if !methodAllowed(w, r) {
 		return
 	}
 

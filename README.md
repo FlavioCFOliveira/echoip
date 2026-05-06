@@ -80,6 +80,16 @@ Returns the resolved public IP address of the requesting client.
 | **Auth** | None |
 | **Rate limit** | None advertised |
 
+### Health endpoints
+
+For Kubernetes, load balancers, and uptime monitors. All return `text/plain` `ok` (or `not ready`) and accept GET/HEAD only.
+
+| Path | Purpose | Notes |
+|------|---------|-------|
+| `GET /healthz` | Process is alive and accepting requests | Always 200 once the process is up. |
+| `GET /livez` | Liveness — restart if it fails | Same as healthz today; reserved for future internal-degradation checks. |
+| `GET /readyz` | Readiness — should receive traffic? | 200 once the HTTP server has bound; 503 during cold start or shutdown. |
+
 ### Configuration
 
 Configuration is environment-variable based; both variables are optional.
