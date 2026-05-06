@@ -158,6 +158,9 @@ func TestHomeHandler(t *testing.T) {
 			if nosniff := rr.Header().Get("X-Content-Type-Options"); nosniff != "nosniff" {
 				t.Errorf("X-Content-Type-Options = %q, want nosniff", nosniff)
 			}
+			if srv := rr.Header().Get("Server"); srv != "" {
+				t.Errorf("Server = %q, want empty (no fingerprint leak)", srv)
+			}
 		})
 	}
 }
